@@ -1,17 +1,23 @@
+"""
+Calculate the solar position using
+Astronomical Applications Department of the US Naval Observatory
 
-# import os
-# import threading
-# import warnings
-import pandas as pd
-import numpy as np
-import datetime
+The approximations presented are accurate within arcminutes for 200
+centuries of the year 2000. 
+
+Astronomical Applications Department of the U.S. Naval Observatory, (2015),
+reproduced from The Astronomical Almanac Online and produced by the U.S.
+Naval Observatory and H.M. Nautical Almanac Office.
+http://aa.usno.navy.mil/faq/docs/SunApprox.php.
+"""
+
+# Created by Sergio Badillo. 2020
+
 import math
+import datetime
 
-
-def julian_date(unixtime):
-    jd = unixtime * 1.0 / 86400 + 2440587.5
-    return jd
-
+import numpy as np
+import pandas as pd
 
 def to_unixtime(time):
     """Transforms a pandas datetime index into unix time"""
@@ -21,7 +27,46 @@ def to_unixtime(time):
             time = pd.DatetimeIndex(time)
         except (TypeError, ValueError):
             time = pd.DatetimeIndex([time, ])
+            
     return np.array(time.astype(np.int64)/10**9)
+
+
+def julian_date(unixtime):
+    """Calculates the julian day. It is much faster to calculate 
+    from unix/epoch time.
+    Args:
+        Unixtime : Number of seconds since January 1, 1970. 
+    Return :
+        Julian Day: Count of days since the beginning of the Julian period.
+    """
+    return unixtime * 1.0 / 86400 + 2440587.5
+
+
+def D_time(julian_day):
+    """
+    Calculates time elapsed since 2000 noon UTC
+    """
+    
+    J2000 = 2451545    # Refering to the instant of 12 noon on January 1, 2000
+    d_time = julian_day - J2000 
+    print('d_time', d_time)
+    return d_time
+
+def sun_mean_lon(d_time):
+    """
+    mean longitude of the sun corrected to the aberration of the light
+
+    """
+    sun_mean_lon = 280.459 + 0.98564736 * d_time
+
+def sun_mean_anomaly(d_time):
+    """Correcting to the elliptic orbit of the sun and
+    the varying speed throughout the year
+    """
+    sun_mean_anomaly = 357.529 + 0.98560028 * d_time
+    return sun_mean_anomaly
+
+
 
 # test datapoint
 lat = 52.010000
@@ -35,22 +80,12 @@ print(time)
 
 
 
-
-J2000 = 2451545 # Refering to the instant of 12 noon (midday) on January 1, 2000
-D_time = julian_date(time_unix) - J2000  # time elapsed since 2000 noon UTC
-
 # fastforward - pandas one liner
 # print(naive_times.to_julian_date())
 
 D_time = 5216.875 # force for test, fix later
-print(D_time)
 
-# mean longitude of the sun corrected to the aberration of the light
-sun_mean_lon = 280.459 + 0.98564736 * D_time
 
-# correcting to the elliptic orbit of the sun and the varyng speed 
-# throuhout the year
-sun_mean_anomaly = 357.529 + 0.98560028 * D_time
 
 # print(sun_mean_anomaly)
 # normalise sun's mean longitude and mean anomaly to the range of [0, 360)
