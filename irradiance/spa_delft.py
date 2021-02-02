@@ -14,7 +14,6 @@ http://aa.usno.navy.mil/faq/docs/SunApprox.php.
 # Created by Sergio Badillo. 2020
 
 import math
-import datetime
 
 import numpy as np
 import pandas as pd
@@ -32,6 +31,17 @@ EARTHS_ECLIPTIC_MEAN_OBLIQUITY = 23.429
 def to_unixtime(time):
     """Transforms a pandas datetime index into unix time"""
 
+
+def julian_date(time):
+    """Calculates the julian day. It is much faster to calculate
+    from unix/epoch time.
+
+    Args:
+      time : Number of seconds since January 1, 1970.
+    Return :
+      Julian Day: Count of days since the beginning of the Julian period.
+    """
+
     if not isinstance(time, pd.DatetimeIndex):
         try:
             time = pd.DatetimeIndex(time)
@@ -42,19 +52,10 @@ def to_unixtime(time):
                 ]
             )
 
-    return np.array(time.astype(np.int64) / 10 ** 9)
+    # unixtime = np.array(time.astype(np.int64) / 10 ** 9)
 
-
-def julian_date(unixtime):
-    """Calculates the julian day. It is much faster to calculate
-    from unix/epoch time.
-
-    Args:
-      Unixtime : Number of seconds since January 1, 1970.
-    Return :
-      Julian Day: Count of days since the beginning of the Julian period.
-    """
-    return unixtime * 1.0 / 86400 + 2440587.5
+    # return unixtime * 1.0 / 86400 + 2440587.5
+    return time.to_julian_date()
 
 
 def d_time(julian_day):
@@ -123,7 +124,7 @@ def earth_axial_tilt(d_time):
     """
 
     earth_axial_tilt = (
-        EARTHS_ECLIPTIC_MEAN_OBLIQUITY - EARTHS_ECLIPTIC_OBLIQUITY_CHANGE_RATE * D_time
+        EARTHS_ECLIPTIC_MEAN_OBLIQUITY - EARTHS_ECLIPTIC_OBLIQUITY_CHANGE_RATE * d_time
     )
     return earth_axial_tilt
 
@@ -142,7 +143,7 @@ def LMST(d_time, lon):
 
     # Julian Ephemeris Century (JCE), the number of centuries past since
     # Greenwich noorm terrestrial time, on january 2000.
-    JCE_time = D_time / 36525
+    JCE_time = d_time / 36525
 
     # Greenwich mean sideral time (GMST) in hours
     # and normalised to [0h to 24h)
