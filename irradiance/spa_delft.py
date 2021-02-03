@@ -1,6 +1,6 @@
 """
-Calculate the solar position using
-Astronomical Applications Department of the US Naval Observatory
+Calculate the solar position using the
+Astronomical Applications Department of the US Naval Observatory method.
 
 The approximations presented are accurate within arcminutes for 200
 centuries of the year 2000. 
@@ -28,10 +28,6 @@ EARTHS_ECLIPTIC_OBLIQUITY_CHANGE_RATE = 0.00000036
 EARTHS_ECLIPTIC_MEAN_OBLIQUITY = 23.429
 
 
-def to_unixtime(time):
-    """Transforms a pandas datetime index into unix time"""
-
-
 def julian_date(time):
     """Calculates the julian day. It is much faster to calculate
     from unix/epoch time.
@@ -53,19 +49,21 @@ def julian_date(time):
             )
 
     # unixtime = np.array(time.astype(np.int64) / 10 ** 9)
-
     # return unixtime * 1.0 / 86400 + 2440587.5
-    return time.to_julian_date()
+    jd = time.to_julian_date()[0]
+
+    return jd
 
 
 def d_time(julian_day):
     """
     Calculates time elapsed since 2000 noon UTC
     """
-    d_time = julian_day - EPOCHS_JULIAN_DATE
-    print("d_time", d_time)
+    d = julian_day - EPOCHS_JULIAN_DATE
 
-    return d_time
+    print(type(d))
+
+    return d
 
 
 def sun_mean_lon(d_time):
@@ -95,17 +93,15 @@ def sun_mean_anomaly(d_time):
     return sun_mean_anomaly % 360
 
 
-def sun_ecliptic_lon(sun_mean_anomaly, sun_mean_lon):
+def sun_ecliptic_lon(sun_mean_lon, sun_mean_anomaly):
     """Calculates the geocentric apparent ecliptic longitude of the sun
     (adjusted for aberration).
     """
 
-    sun_ecliptic_lon = sun_mean_lon
-    +(1.915 * math.sin(math.radians(sun_mean_anomaly)))
-    +(0.020 * math.sin(math.radians(2) * math.radians(sun_mean_anomaly)))
-
-    print(sun_ecliptic_lon)
-
+    sun_ecliptic_lon = sun_mean_lon + \
+        1.915 * math.sin(math.radians(sun_mean_anomaly)) + \
+        0.020 * math.sin(2*math.radians(sun_mean_anomaly))
+    print(type(sun_ecliptic_lon))
     return sun_ecliptic_lon
 
 
@@ -129,8 +125,8 @@ def earth_axial_tilt(d_time):
     return earth_axial_tilt
 
 
-def LMST(d_time, lon):
-    """Calculates Local Mean Sideral Time (LMST) based on D_time
+def lmst(d_time, lon):
+    """Calculates Local Mean Sideral Time (lmst) based on D_time
 
     Args:
       d_time : time elapsed since Greenwich noon, terrestrial time,
@@ -145,63 +141,56 @@ def LMST(d_time, lon):
     # Greenwich noorm terrestrial time, on january 2000.
     JCE_time = d_time / 36525
 
-    # Greenwich mean sideral time (GMST) in hours
+    # Greenwich mean sideral time (gmst) in hours
     # and normalised to [0h to 24h)
-    GMST = 18.697374558 + (24.06570982441908 * d_time) + (0.000026 * (JCE_time ** 2))
-    GMST = GMST % 24
+    gmst = 18.697374558 + (24.06570982441908 * d_time) + (0.000026 * (JCE_time ** 2))
+    gmst = gmst % 24
 
-    # Local Mean sideral time
-    LMST = GMST * 15 + lon
+    lmst = gmst * 15 + lon
 
-    print("LMST", LMST)  # todo : clean debug
-
-    return LMST
+    return lmst
 
 
-def sun_altitude(lat, LMST, sun_ecliptic_lon, earth_axial_tilt):
+def sun_altitude(lat, lmst, sun_ecliptic_lon, earth_axial_tilt):
     """Calculates the Solar Altitude in degrees."""
 
     # Convert inputs to radians
     sun_ecliptic_lon = math.radians(sun_ecliptic_lon)
     earth_axial_tilt = math.radians(earth_axial_tilt)
     lat = math.radians(lat)
-    LMST = math.radians(LMST)
+    lmst = math.radians(lmst)
 
     # Altitude components zeta (ζ)
 
-    zeta = math.cos(lat) * math.cos(LMST) * math.cos(sun_ecliptic_lon) + (
-        math.cos(lat) * math.sin(LMST) * math.cos(earth_axial_tilt)
+    zeta = math.cos(lat) * math.cos(lmst) * math.cos(sun_ecliptic_lon) + (
+        math.cos(lat) * math.sin(lmst) * math.cos(earth_axial_tilt)
         + math.sin(lat) * math.sin(earth_axial_tilt)
     ) * math.sin(sun_ecliptic_lon)
 
-    print("sinas", zeta)  # todo : clean debug
     solar_altitude = math.degrees(math.asin(zeta))
-    print("solar_altitude", solar_altitude)
 
     return solar_altitude
 
 
-def sun_zenith(lat, LMST, sun_ecliptic_lon, earth_axial_tilt):
+def sun_zenith(lat, lmst, sun_ecliptic_lon, earth_axial_tilt):
     """Calculates the Solar Zenith in degrees."""
 
     # Convert inputs to radians
     sun_ecliptic_lon = math.radians(sun_ecliptic_lon)
     earth_axial_tilt = math.radians(earth_axial_tilt)
     lat = math.radians(lat)
-    LMST = math.radians(LMST)
+    lmst = math.radians(lmst)
 
     # Azimuth components # nu (ν) and xi (ξ)
-    nu = -1 * (math.sin(LMST) * math.cos(sun_ecliptic_lon)) + (
-        math.cos(LMST) * math.cos(earth_axial_tilt) * math.sin(sun_ecliptic_lon)
+    nu = -1 * (math.sin(lmst) * math.cos(sun_ecliptic_lon)) + (
+        math.cos(lmst) * math.cos(earth_axial_tilt) * math.sin(sun_ecliptic_lon)
     )
 
-    xi = -1 * (math.sin(lat) * math.cos(LMST) * math.cos(sun_ecliptic_lon)) - (
-        (math.sin(lat) * math.sin(LMST) * math.cos(earth_axial_tilt))
+    xi = -1 * (math.sin(lat) * math.cos(lmst) * math.cos(sun_ecliptic_lon)) - (
+        (math.sin(lat) * math.sin(lmst) * math.cos(earth_axial_tilt))
         - (math.cos(lat) * math.sin(earth_axial_tilt))
     ) * math.sin(sun_ecliptic_lon)
 
-    print("nu", nu, "xi", xi)  # todo : clean debug
-    print("tanAs", nu / xi)
 
     if xi < 0:
         solar_azimuth = math.degrees(math.atan(nu / xi)) + 180
@@ -210,22 +199,32 @@ def sun_zenith(lat, LMST, sun_ecliptic_lon, earth_axial_tilt):
     else:
         solar_azimuth = math.degrees(math.atan(nu / xi))
 
-    print("solar_azimuth", solar_azimuth)  # todo : clean debug
     return solar_azimuth
 
 
-# # todo : get rid of test here
-# # test datapoint
-# lat = 52.010000
-# lon = 4.360000
+def solar_position(time, lat, lon) :
+    """Calculate the solar position using the
+    Astronomical Applications Department of the US Naval Observatory method.
+    
+    Args :
 
-# D_time = 5216.875  # force for test, fix later
+    Returns :
+    Array with elements
+        elevation
+        azimuth
+    """
+    
+    D = d_time(julian_date(time))
+    
+    q = sun_mean_lon(D)
+    g = sun_mean_anomaly(D) 
 
-# time_lst = pd.to_datetime("14/04/2014 11:00:00")  # Local Standard time
-# tz = "Etc/GMT+2"
-# time = time_lst.tz_localize(tz)
-# # time_unix = to_unixtime(time)
-# print(time)
+    lambda_s = sun_ecliptic_lon(q, g)
+    epsilon = earth_axial_tilt(D)
+    theta_L = lmst(D, lon)
 
-# # fastforward - pandas one liner
-# # print(naive_times.to_julian_date())
+    altitude = sun_altitude(lat, theta_L, lambda_s, epsilon) 
+    azimuth  = sun_zenith(lat, theta_L, lambda_s, epsilon)
+    
+    return [altitude, azimuth]
+
