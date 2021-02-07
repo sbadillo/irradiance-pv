@@ -18,9 +18,10 @@ import math
 import numpy as np
 import pandas as pd
 
+# TDB Julian date of epoch J2000.0
+EPOCHS_JULIAN_DATE = 2451545
 
 SUNS_MEAN_LONGITUDE_AT_EPOCH = 280.459
-EPOCHS_JULIAN_DATE = 2451545
 SUNS_MEAN_LONGITUDE_AT_EPOCH = 280.459
 SUNS_MEAN_ANOMALY_AT_EPOCH = 357.5291
 EARTHS_MEAN_ANGULAR_ROTATION = 0.98560028
@@ -48,6 +49,12 @@ def julian_date(time):
                 ]
             )
 
+    # if localized, convert to UTC. otherwise, assume UTC.
+    try:
+        time = time.tz_convert("UTC")
+    except TypeError:
+        time = time
+
     # unixtime = np.array(time.astype(np.int64) / 10 ** 9)
     # return unixtime * 1.0 / 86400 + 2440587.5
     jd = time.to_julian_date()[0]
@@ -61,7 +68,23 @@ def d_time(julian_day):
     """
     d = julian_day - EPOCHS_JULIAN_DATE
 
-    print(type(d))
+    return d
+
+
+def d_time_bis(time):
+    # time is datetimeobject
+
+    # if localized, convert to UTC. otherwise, assume UTC.
+    try:
+        time_utc = time.tz_convert("UTC")
+    except TypeError:
+        time_utc = time
+
+    unixtime = time.timestamp()
+
+    jd = unixtime * 1.0 / 86400 + 2440587.5
+
+    d = jd - EPOCHS_JULIAN_DATE
 
     return d
 
@@ -98,10 +121,12 @@ def sun_ecliptic_lon(sun_mean_lon, sun_mean_anomaly):
     (adjusted for aberration).
     """
 
-    sun_ecliptic_lon = sun_mean_lon + \
-        1.915 * math.sin(math.radians(sun_mean_anomaly)) + \
-        0.020 * math.sin(2*math.radians(sun_mean_anomaly))
-    print(type(sun_ecliptic_lon))
+    sun_ecliptic_lon = (
+        sun_mean_lon
+        + 1.915 * math.sin(math.radians(sun_mean_anomaly))
+        + 0.020 * math.sin(2 * math.radians(sun_mean_anomaly))
+    )
+    # print(type(sun_ecliptic_lon))
     return sun_ecliptic_lon
 
 
@@ -145,8 +170,7 @@ def lmst(d_time, lon):
     # and normalised to [0h to 24h)
     gmst = 18.697374558 + (24.06570982441908 * d_time) + (0.000026 * (JCE_time ** 2))
     gmst = gmst % 24
-
-    lmst = gmst * 15 + lon
+    lmst = (gmst * 15) + lon
 
     return lmst
 
@@ -191,7 +215,6 @@ def sun_zenith(lat, lmst, sun_ecliptic_lon, earth_axial_tilt):
         - (math.cos(lat) * math.sin(earth_axial_tilt))
     ) * math.sin(sun_ecliptic_lon)
 
-
     if xi < 0:
         solar_azimuth = math.degrees(math.atan(nu / xi)) + 180
     elif (xi > 0) & (nu < 0):
@@ -202,10 +225,10 @@ def sun_zenith(lat, lmst, sun_ecliptic_lon, earth_axial_tilt):
     return solar_azimuth
 
 
-def solar_position(time, lat, lon) :
+def solar_position(time, lat, lon):
     """Calculate the solar position using the
     Astronomical Applications Department of the US Naval Observatory method.
-    
+
     Args :
 
     Returns :
@@ -213,18 +236,21 @@ def solar_position(time, lat, lon) :
         elevation
         azimuth
     """
-    
+
     D = d_time(julian_date(time))
-    
     q = sun_mean_lon(D)
-    g = sun_mean_anomaly(D) 
+    g = sun_mean_anomaly(D)
+    # print(D)
+    # print("q, g", q, g)
 
     lambda_s = sun_ecliptic_lon(q, g)
+    # print("lambda_s", lambda_s)
     epsilon = earth_axial_tilt(D)
+    # print("epsilon", epsilon)
     theta_L = lmst(D, lon)
+    # print("theta_L", theta_L)
 
-    altitude = sun_altitude(lat, theta_L, lambda_s, epsilon) 
-    azimuth  = sun_zenith(lat, theta_L, lambda_s, epsilon)
-    
+    altitude = sun_altitude(lat, theta_L, lambda_s, epsilon)
+    azimuth = sun_zenith(lat, theta_L, lambda_s, epsilon)
+
     return [altitude, azimuth]
-
