@@ -1,15 +1,15 @@
-import math
 import pandas as pd
 import numpy as np
-from spa_delft import solar_position
+from spa_delft import solar_position, solar_position_vectorized
 import time
+import requests
+from requests.exceptions import HTTPError
 
 
 class PVSystem:
     """The class represents a pv system array and its general attributes.
 
     Args :
-    - times : a pandas timeseries
     - latitude, longitude : decimal coordinates of system's location
     - elevation : distance aboves sea level
 
@@ -25,7 +25,7 @@ class PVSystem:
 
     def __init__(
         self,
-        times,
+        name,
         latitude,
         longitude,
         elevation=0,
@@ -33,89 +33,124 @@ class PVSystem:
         surface_tilt=0,
     ):
 
-        self.times = times
+        self.name = name
         self.lat = latitude
         self.lon = longitude
         self.elev = elevation
         self.surface_azimuth = surface_azimuth
         self.surface_tilt = surface_tilt
-        self.sun_pos = []
 
     def __repr__(self):
 
         attrs = [
+            self.name,
             self.lat,
             self.lon,
             self.surface_azimuth,
             self.surface_tilt,
         ]
-        return "PV System at Lat {} Lon {}. Array azimuth: {} tilt: {}".format(*attrs)
+        return "PV System '{}' at Lat {} Lon {}. Array azimuth: {} tilt: {}".format(
+            *attrs
+        )
 
-    def get_solar_pos(self):
 
-        df = pd.DataFrame(self.times, columns=["time"])
+class Irradiance:
+    """The irradiance Class represents the irradiance profiles and some
+    of their conversion methods in order to obtain the POA Irradiance"""
+
+    def __init__(
+        self,
+        pvsystem,
+        times,
+    ):
+        # check if times arrays is datetimeindex
+        if not isinstance(times, pd.DatetimeIndex):
+            print("warning times is not datetime, ")
+            try:
+                times = pd.DatetimeIndex(times)
+            except (TypeError, ValueError):
+                times = pd.DatetimeIndex(
+                    [
+                        times,
+                    ]
+                )
+
+        # if localized, convert to UTC. otherwise, assume UTC.
+        try:
+            print(times[0])
+            times = times.tz_convert("UTC")
+            print(times[0])
+        except TypeError:
+            times = times
+
+        self.times = times
+        self.lat = pvsystem.lat
+        self.lon = pvsystem.lon
+        self.elev = pvsystem.elev
+        self.surface_azimuth = pvsystem.surface_azimuth
+        self.surface_tilt = pvsystem.surface_tilt
+
+        self.solar_pos = None
+        self.aoi = None
+
+    def read_TMY_file():
+        """ "read the standard components GHI, DNI, DHI."""
+
+    def get_TMY_file(self):
+        """uses pvgis webservice to create a Typical Meteorological Year file
+        for the location.
+
+        Returns :
+        - json object
+
+        read more about TMY files
+        https://ec.europa.eu/jrc/en/PVGIS/tools/tmy
+        """
+
+        url = "https://re.jrc.ec.europa.eu/api/tmy"
+        params = {
+            "lat": self.lat,
+            "lon": self.lon,
+            "startyear": 2005,
+            "endyear": 2015,
+            "outputformat": "json",  # csv, json, epw
+        }
+
+        start = time.time()
+
+        try:
+            r = requests.get(url, params=params)
+
+            # If the respons was successful, no Exception will be raised
+            r.raise_for_status()
+
+        except HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")  # Python 3.6
+        except Exception as err:
+            print(f"Other error occurred: {err}")  # Python 3.6
+        else:
+            print("get_TMY_file: succes")
+            print("done in {:.2f} seconds.".format(time.time() - start))
+
+            return r.json()
+
+    def get_solar_pos_v(self):
+        """
+        Calculates the position of the sun relative to an observer on the surface of the Earth.
+        The convention used to describe solar positions includes the parameters :
+        - Zenith Angle : measured from observer's zenith (observers plane normal).
+        - Azimuth Angle : measured in relation to North.
+        - Solar Elevation Angle : measured up from the horizon and equal to 90deg - Zenith Angle.
+
+        """
 
         start = time.time()
         print("calculating sun positions")
+        self.solar_pos = solar_position_vectorized(self.times, self.lat, self.lon)
+        print(self.solar_pos)
+        print("done in", time.time() - start)
 
-        df[["elevation", "azimuth"]] = df.apply(
-            lambda x: solar_position(x, self.lat, self.lon),
-            axis=1,
-            result_type="expand",
-        )
-
-        end = time.time()
-
-        print("done in", end - start)
-
-        print(df)
-
-    # def get_solar_pos(
-    #     self, pressure=101325, temperature=12, delta_t=67.0, atmos_refract=None
-    # ):
-    #     """
-    #     Calculates the position of the sun relative to an observer on the surface of the Earth.
-    #     The convention used to describe solar positions includes the parameters :
-    #     - Zenith Angle : measured from observer's zenith (observers plane normal).
-    #     - Azimuth Angle : measured in relation to North.
-    #     - Solar Elevation Angle : measured up from the horizon and equal to 90deg - Zenith Angle.
-
-    #     pressure : int or float, optional, default 101325
-    #         avg. yearly air pressure in Pascals.
-    #     temperature : int or float, optional, default 12
-    #         avg. yearly air temperature in degrees C.
-    #     delta_t : float, optional, default 67.0
-    #         If delta_t is None, uses spa.calculate_deltat
-    #         using time.year and time.month from pandas.DatetimeIndex.
-    #         For most simulations specifing delta_t is sufficient.
-    #         Difference between terrestrial time and UT1.
-    #         *Note: delta_t = None will break code using nrel_numba,
-    #         this will be fixed in a future version.*
-    #         The USNO has historical and forecasted delta_t [3].
-    #     atmos_refrac : None or float, optional, default None
-    #         The approximate atmospheric refraction (in degrees)
-    #         at sunrise and sunset.
-
-    #     Args:
-
-    #     Returns:
-
-    #     """
-
-    #     pressure = pressure / 100  # pressure must be in millibars for calculation
-    #     atmos_refract = atmos_refract or 0.5667
-
-    #     lat = self.lat
-    #     lon = self.lon
-    #     elev = self.elev
-
-    #     solar_pos = []
-    #     for t in self.times:
-    #         print(t)
-
-    #     pass
-
-    def get_aoi(self, solar_azimuth, solar_zenith):
+    def get_aoi(self):
         """Calculates the angle of incidence between
         the Sun's rays and the surface of the PV Array.
 
@@ -127,10 +162,47 @@ class PVSystem:
 
         """
 
-        c_zenith_cos = math.cos(sun_zenith) * math.cos(self.surface_tilt)
-        c_zenith_sin = math.sin(sun_senith) * math.sin(self.surface_tilt)
-        c_azimuth = math.cos(sun_azimuth - self.surface_azimuth)
-        AOI = math.acos(c_zenith_cos + c_zenith_sin * c_azimuth)
+        sun_zenith = np.radians(self.solar_pos["solar_zenith"])
+        sun_azimuth = np.radians(self.solar_pos["solar_azimuth"])
+        surface_tilt = np.radians(self.surface_tilt)
+        surface_azimuth = np.radians(self.surface_azimuth)
 
+        c_zenith_cos = np.cos(sun_zenith) * np.cos(surface_tilt)
+        c_zenith_sin = np.sin(sun_zenith) * np.sin(surface_tilt)
+        c_azimuth = np.cos(sun_azimuth - surface_azimuth)
+
+        self.aoi = np.degrees(np.arccos(c_zenith_cos + c_zenith_sin * c_azimuth))
+        print(self.aoi)
+
+        # ! alert, output is not accurate, rewrite formula above or check conventions 👆
         # TODO :  check outputs, All math trig functions return radians ! transform accordingly
         pass
+
+    def get_poa_irradiance():
+        """Calculates plane-of-array irradiance"""
+
+        E_poa_beam = None  # depends on AOI
+        E_poa_ground = None  # depends on Albedo coefficient
+        E_poa_diffuse = None  # depends on surface tilt, and sun zenith https://pvpmc.sandia.gov/modeling-steps/1-weather-design-inputs/plane-of-array-poa-irradiance/calculating-poa-irradiance/poa-sky-diffuse/simple-sandia-sky-diffuse-model/
+
+        E_poa = E_poa_beam + E_poa_ground + E_poa_diffuse
+
+        return E_poa
+
+
+# Albedo coeff.
+# Albedo is the fraction of the Global Horizontal Irradiance that is reflected.
+# The PVsyst modeling software provides the following guidance for estimating an appropriate value for albedo:
+
+# Urban environment 0.14 – 0.22
+# Grass 0.15 – 0.25 / Fresh grass 0.26
+# Fresh snow 0.82
+# Wet snow 0.55-0.75
+# Dry asphalt 0.09-0.15
+# Wet Asphalt 0.18
+# Concrete 0.25-0.35
+# Red tiles 0.33
+# Aluminum 0.85
+# Copper 0.74
+# New galvanized steel 0.35
+# Very dirty galvanized steel 0.08
