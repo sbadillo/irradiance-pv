@@ -92,6 +92,7 @@ class Irradiance:
 
         self.solar_pos = None
         self.aoi = None
+        self.tmy = None
 
     def read_TMY_file():
         """ "read the standard components GHI, DNI, DHI."""
@@ -100,8 +101,22 @@ class Irradiance:
         """uses pvgis webservice to create a Typical Meteorological Year file
         for the location.
 
+
         Returns :
-        - json object
+        - Dataframe instance consisting of 1 year (or several years) of hourly
+        data,  with the following columns:
+
+            Date & time (UTC for normal CSV, local timezone time
+            T2m [°C] - Dry bulb (air) temperature.
+            RH [%] -  Relative Humidity.
+            G(h) [W/m2] - Global horizontal irradiance.
+            Gb(n) [W/m2] - Direct (beam) irradiance.
+            Gd(h) [W/m2] - Diffuse horizontal irradiance.
+            IR(h) [W/m2] - Infrared radiation downwards.
+            WS10m [m/s] - Windspeed.
+            WD10m [°] - Wind direction.
+            SP [Pa] - Surface (air) pressure.
+
 
         read more about TMY files
         https://ec.europa.eu/jrc/en/PVGIS/tools/tmy
@@ -125,14 +140,20 @@ class Irradiance:
             r.raise_for_status()
 
         except HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")  # Python 3.6
-        except Exception as err:
-            print(f"Other error occurred: {err}")  # Python 3.6
-        else:
-            print("get_TMY_file: succes")
-            print("done in {:.2f} seconds.".format(time.time() - start))
+            print(f"HTTP error occurred: {http_err}")
 
-            return r.json()
+        except Exception as err:
+            print(f"Other error occurred: {err}")
+
+        else:
+            print("get_TMY_file: done in {:.2f} seconds.".format(time.time() - start))
+
+            tmy_json = r.json()
+            df_tmy = pd.DataFrame.from_dict(tmy_json["outputs"]["tmy_hourly"])
+
+            self.tmy = df_tmy
+
+            return df_tmy
 
     def get_solar_pos_v(self):
         """
@@ -176,10 +197,16 @@ class Irradiance:
 
         return self.aoi
 
-    def get_poa_irradiance():
+    def get_poa_irradiance(self):
         """Calculates plane-of-array irradiance"""
 
-        E_poa_beam = None  # depends on AOI
+        # The plane of array (POA) beam component of irradiance is calculated
+        # by adjusting the direct normal irradiance by the angle of incidence.
+        aoi = self.aoi
+        # dni = # todo here
+
+        E_poa_beam = dni * np.cos(aoi)  # depends on AOI
+
         E_poa_ground = None  # depends on Albedo coefficient
         E_poa_diffuse = None  # depends on surface tilt, and sun zenith https://pvpmc.sandia.gov/modeling-steps/1-weather-design-inputs/plane-of-array-poa-irradiance/calculating-poa-irradiance/poa-sky-diffuse/simple-sandia-sky-diffuse-model/
 

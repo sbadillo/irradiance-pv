@@ -18,10 +18,7 @@ print("created", pv_Sonora)
 
 irradiance = Irradiance(times=naive_times, pvsystem=pv_Sonora)
 
-# irradiance.get_TMY_file()
 
+irradiance.get_TMY_file()
 irradiance.get_solar_pos_v()
 irradiance.get_aoi()
-
-
-print(aoi)
