@@ -267,9 +267,10 @@ def solar_position_vectorized(times, lat, lon):
     Args :
 
     Returns :
-    Array with elements
+    Dataframe indexed to times with columns
         elevation
         azimuth
+        zenith
     """
 
     df = pd.DataFrame(index=times)

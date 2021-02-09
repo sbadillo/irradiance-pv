@@ -162,21 +162,19 @@ class Irradiance:
 
         """
 
-        sun_zenith = np.radians(self.solar_pos["solar_zenith"])
-        sun_azimuth = np.radians(self.solar_pos["solar_azimuth"])
-        surface_tilt = np.radians(self.surface_tilt)
-        surface_azimuth = np.radians(self.surface_azimuth)
+        theta_A = np.radians(self.solar_pos["solar_azimuth"])  # azimuth
+        theta_Z = np.radians(self.solar_pos["solar_zenith"])  # zenith
+        theta_T = np.radians(self.surface_tilt)  # surface tilt
+        theta_A_array = np.radians(self.surface_azimuth)  # surface azimuth
 
-        c_zenith_cos = np.cos(sun_zenith) * np.cos(surface_tilt)
-        c_zenith_sin = np.sin(sun_zenith) * np.sin(surface_tilt)
-        c_azimuth = np.cos(sun_azimuth - surface_azimuth)
+        c_zenith_cos = np.cos(theta_Z) * np.cos(theta_T)
+        c_zenith_sin = (
+            np.sin(theta_Z) * np.sin(theta_T) * np.cos(theta_A - theta_A_array)
+        )
 
-        self.aoi = np.degrees(np.arccos(c_zenith_cos + c_zenith_sin * c_azimuth))
-        print(self.aoi)
+        self.aoi = np.degrees(np.arccos(c_zenith_cos + c_zenith_sin))
 
-        # ! alert, output is not accurate, rewrite formula above or check conventions 👆
-        # TODO :  check outputs, All math trig functions return radians ! transform accordingly
-        pass
+        return self.aoi
 
     def get_poa_irradiance():
         """Calculates plane-of-array irradiance"""
