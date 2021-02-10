@@ -157,19 +157,20 @@ class Irradiance:
 
     def get_solar_pos_v(self):
         """
-        Calculates the position of the sun relative to an observer on the surface of the Earth.
+        Calculates the position of the sun relative to an observer on the
+        surface of the Earth.
         The convention used to describe solar positions includes the parameters :
         - Zenith Angle : measured from observer's zenith (observers plane normal).
         - Azimuth Angle : measured in relation to North.
-        - Solar Elevation Angle : measured up from the horizon and equal to 90deg - Zenith Angle.
+        - Solar Elevation Angle : measured up from the horizon (90deg - Zenith Angle).
 
         """
 
         start = time.time()
         print("calculating sun positions")
         self.solar_pos = solar_position_vectorized(self.times, self.lat, self.lon)
-        print(self.solar_pos)
-        print("done in", time.time() - start)
+        # print(self.solar_pos)
+        print("get_solar_pos_v : done in", time.time() - start)
 
     def get_aoi(self):
         """Calculates the angle of incidence between
@@ -182,6 +183,7 @@ class Irradiance:
         Return :
 
         """
+        df_aoi = pd.DataFrame(index=self.solar_pos.index, columns=["aoi"])
 
         theta_A = np.radians(self.solar_pos["solar_azimuth"])  # azimuth
         theta_Z = np.radians(self.solar_pos["solar_zenith"])  # zenith
@@ -193,7 +195,8 @@ class Irradiance:
             np.sin(theta_Z) * np.sin(theta_T) * np.cos(theta_A - theta_A_array)
         )
 
-        self.aoi = np.degrees(np.arccos(c_zenith_cos + c_zenith_sin))
+        df_aoi["aoi"] = np.degrees(np.arccos(c_zenith_cos + c_zenith_sin))
+        self.aoi = df_aoi
 
         return self.aoi
 
@@ -202,16 +205,34 @@ class Irradiance:
 
         # The plane of array (POA) beam component of irradiance is calculated
         # by adjusting the direct normal irradiance by the angle of incidence.
-        aoi = self.aoi
-        # dni = # todo here
+        aoi = self.aoi["aoi"]
+        ghi = self.tmy["G(h)"]
+        dni = self.tmy["Gb(n)"]
+        dhi = self.tmy["Gd(h)"]  # TODO : use
+        albedo = 0.16  # Urban environement is 0.14 - 0.22
 
-        E_poa_beam = dni * np.cos(aoi)  # depends on AOI
+        # POA Beam component
+        E_b = dni * np.cos(aoi)
 
-        E_poa_ground = None  # depends on Albedo coefficient
-        E_poa_diffuse = None  # depends on surface tilt, and sun zenith https://pvpmc.sandia.gov/modeling-steps/1-weather-design-inputs/plane-of-array-poa-irradiance/calculating-poa-irradiance/poa-sky-diffuse/simple-sandia-sky-diffuse-model/
+        # POA Ground component
+        E_g = ghi * albedo * ((1 - np.cos(np.radians(self.surface_tilt))) / 2)
 
-        E_poa = E_poa_beam + E_poa_ground + E_poa_diffuse
+        # POA Sky Diffuse component
+        E_d_iso = dhi * ((1 + np.cos(np.radians(self.surface_tilt))) / 2)
+        E_d_correction = ghi * (
+            (
+                0.012
+                * self.solar_pos["solar_zenith"]
+                * (1 - np.cos(np.radians(self.surface_tilt)))
+            )
+            / 2
+        )
 
+        E_d = E_d_iso + E_d_correction
+
+        # POA Irradiance total
+        E_poa = E_b + E_g + E_d
+        print(E_poa)
         return E_poa
 
 

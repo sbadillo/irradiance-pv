@@ -1,9 +1,9 @@
 from pvsystem import PVSystem
 from pvsystem import Irradiance
 import pandas as pd
+import time
 
 import pvlib
-
 
 naive_times = pd.date_range(start="2015", end="2016", freq="1h")
 localized_times = naive_times.tz_localize("MST")
@@ -19,6 +19,11 @@ print("created", pv_Sonora)
 irradiance = Irradiance(times=naive_times, pvsystem=pv_Sonora)
 
 
+startMaster = time.time()
+
 irradiance.get_TMY_file()
 irradiance.get_solar_pos_v()
 irradiance.get_aoi()
+irradiance.get_poa_irradiance()
+
+print("DONE in ", time.time() - startMaster)
