@@ -83,12 +83,17 @@ class Irradiance:
         except TypeError:
             times = times
 
+        # if index (times) is not closed to left then drop last value.
+        if len(times) == 8761:
+            times = times[:8760]
+
         self.times = times
         self.lat = pvsystem.lat
         self.lon = pvsystem.lon
         self.elev = pvsystem.elev
         self.surface_azimuth = pvsystem.surface_azimuth
         self.surface_tilt = pvsystem.surface_tilt
+        self.pvsystem = pvsystem
 
         self.solar_pos = None
         self.aoi = None
@@ -126,7 +131,7 @@ class Irradiance:
         params = {
             "lat": self.lat,
             "lon": self.lon,
-            "startyear": 2005,
+            "startyear": 2006,
             "endyear": 2015,
             "outputformat": "json",  # csv, json, epw
         }
@@ -149,8 +154,15 @@ class Irradiance:
             print("get_TMY_file: done in {:.2f} seconds.".format(time.time() - start))
 
             tmy_json = r.json()
-            df_tmy = pd.DataFrame.from_dict(tmy_json["outputs"]["tmy_hourly"])
 
+            df_r = pd.DataFrame.from_dict(data=tmy_json["outputs"]["tmy_hourly"])
+
+            df_tmy = df_r[["time(UTC)", "G(h)", "Gb(n)", "Gd(h)"]].copy()
+            df_tmy.set_index(self.times, inplace=True)
+
+            df_tmy.columns = ["time_pvgis", "GHI", "DNI", "DHI"]
+
+            # df_tmy.drop(columns=["IR(h)", "WS10m", "WD10m", "SP"], axis=1, inplace=True)
             self.tmy = df_tmy
 
             return df_tmy
@@ -198,24 +210,31 @@ class Irradiance:
         df_aoi["aoi"] = np.degrees(np.arccos(c_zenith_cos + c_zenith_sin))
         self.aoi = df_aoi
 
-        return self.aoi
+        return df_aoi
 
     def get_poa_irradiance(self):
         """Calculates plane-of-array irradiance"""
 
+        df_poa = pd.DataFrame(
+            index=self.times, columns=["E_POA", "E_b_poa", "E_g_poa", "E_d_poa"]
+        )
+
         # The plane of array (POA) beam component of irradiance is calculated
         # by adjusting the direct normal irradiance by the angle of incidence.
+
         aoi = self.aoi["aoi"]
-        ghi = self.tmy["G(h)"]
-        dni = self.tmy["Gb(n)"]
-        dhi = self.tmy["Gd(h)"]  # TODO : use
+        ghi = self.tmy["GHI"]
+        dni = self.tmy["DNI"]
+        dhi = self.tmy["DHI"]  # TODO : use
         albedo = 0.16  # Urban environement is 0.14 - 0.22
 
         # POA Beam component
-        E_b = dni * np.cos(aoi)
+        df_poa["E_b_poa"] = dni * np.cos(np.radians(aoi))
 
         # POA Ground component
-        E_g = ghi * albedo * ((1 - np.cos(np.radians(self.surface_tilt))) / 2)
+        df_poa["E_g_poa"] = (
+            ghi * albedo * ((1 - np.cos(np.radians(self.surface_tilt))) / 2)
+        )
 
         # POA Sky Diffuse component
         E_d_iso = dhi * ((1 + np.cos(np.radians(self.surface_tilt))) / 2)
@@ -228,27 +247,9 @@ class Irradiance:
             / 2
         )
 
-        E_d = E_d_iso + E_d_correction
+        df_poa["E_d_poa"] = E_d_iso + E_d_correction
 
         # POA Irradiance total
-        E_poa = E_b + E_g + E_d
-        print(E_poa)
-        return E_poa
+        df_poa["E_POA"] = df_poa["E_b_poa"] + df_poa["E_g_poa"] + df_poa["E_d_poa"]
 
-
-# Albedo coeff.
-# Albedo is the fraction of the Global Horizontal Irradiance that is reflected.
-# The PVsyst modeling software provides the following guidance for estimating an appropriate value for albedo:
-
-# Urban environment 0.14 – 0.22
-# Grass 0.15 – 0.25 / Fresh grass 0.26
-# Fresh snow 0.82
-# Wet snow 0.55-0.75
-# Dry asphalt 0.09-0.15
-# Wet Asphalt 0.18
-# Concrete 0.25-0.35
-# Red tiles 0.33
-# Aluminum 0.85
-# Copper 0.74
-# New galvanized steel 0.35
-# Very dirty galvanized steel 0.08
+        return df_poa

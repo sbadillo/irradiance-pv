@@ -18,7 +18,7 @@ from matplotlib import pyplot as plt
 
 # For this example, we will be using Golden, Colorado
 tz = "MST"
-lat, lon = 39.755, -105.221
+lat, lon = 30, -110
 
 # Create location object to store lat, lon, timezone
 site = location.Location(lat, lon, tz=tz)
