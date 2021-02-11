@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
-from spa_delft import solar_position, solar_position_vectorized
 import time
 import requests
+
+from spa_sb import solar_position_vectorized
 from requests.exceptions import HTTPError
 
 
@@ -28,9 +29,9 @@ class PVSystem:
         name,
         latitude,
         longitude,
+        surface_azimuth,
+        surface_tilt,
         elevation=0,
-        surface_azimuth=180,
-        surface_tilt=0,
     ):
 
         self.name = name
@@ -181,8 +182,9 @@ class Irradiance:
         start = time.time()
         print("calculating sun positions")
         self.solar_pos = solar_position_vectorized(self.times, self.lat, self.lon)
-        # print(self.solar_pos)
+
         print("get_solar_pos_v : done in", time.time() - start)
+        return self.solar_pos
 
     def get_aoi(self):
         """Calculates the angle of incidence between
@@ -216,7 +218,7 @@ class Irradiance:
         """Calculates plane-of-array irradiance"""
 
         df_poa = pd.DataFrame(
-            index=self.times, columns=["E_POA", "E_b_poa", "E_g_poa", "E_d_poa"]
+            index=self.times, columns=["POA", "E_b_poa", "E_g_poa", "E_d_poa"]
         )
 
         # The plane of array (POA) beam component of irradiance is calculated
@@ -225,7 +227,7 @@ class Irradiance:
         aoi = self.aoi["aoi"]
         ghi = self.tmy["GHI"]
         dni = self.tmy["DNI"]
-        dhi = self.tmy["DHI"]  # TODO : use
+        dhi = self.tmy["DHI"]
         albedo = 0.16  # Urban environement is 0.14 - 0.22
 
         # POA Beam component
@@ -250,6 +252,10 @@ class Irradiance:
         df_poa["E_d_poa"] = E_d_iso + E_d_correction
 
         # POA Irradiance total
-        df_poa["E_POA"] = df_poa["E_b_poa"] + df_poa["E_g_poa"] + df_poa["E_d_poa"]
+
+        df_poa = df_poa.where(df_poa > 0, other=0)
+
+        # df_poa[df_poa < 0] = 0  # cut negative values juste in case
+        df_poa["POA"] = df_poa["E_b_poa"] + df_poa["E_g_poa"] + df_poa["E_d_poa"]
 
         return df_poa
