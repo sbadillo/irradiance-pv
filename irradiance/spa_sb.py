@@ -30,30 +30,14 @@ EARTHS_ECLIPTIC_MEAN_OBLIQUITY = 23.429
 
 
 def julian_date(time):
-    """Calculates the julian day. It is much faster to calculate
-    from unix/epoch time.
+    """Calculates the julian day. Time must be passed and a DateTimeIndex
+    object and asumed to be UTC.
 
     Args:
       time : Number of seconds since January 1, 1970.
     Return :
       Julian Day: Count of days since the beginning of the Julian period.
     """
-
-    # if not isinstance(time, pd.DatetimeIndex):
-    #     try:
-    #         time = pd.DatetimeIndex(time)
-    #     except (TypeError, ValueError):
-    #         time = pd.DatetimeIndex(
-    #             [
-    #                 time,
-    #             ]
-    #         )
-
-    # # if localized, convert to UTC. otherwise, assume UTC.
-    # try:
-    #     time = time.tz_convert("UTC")
-    # except TypeError:
-    #     time = time
 
     unixtime = np.array(time.astype(np.int64) / 10 ** 9)
 
@@ -257,20 +241,23 @@ def solar_position(time, lat, lon):
     return [altitude, azimuth]
 
 
-def solar_position_vectorized(times, lat, lon):
+def solar_position_vect(times, lat, lon):
     """
-    Calculate the solar position using the  Astronomical Applications
+    Calculate the solar position using the Astronomical Applications
     Department of the US Naval Observatory method.
     This vectorized approach is 10x faster compared to the original
     solar_positions function.
 
-    Args :
+    Args
+    ----
+    times : A DateTimeIndex object assumed to be in UTC.
 
-    Returns :
-    Dataframe indexed to times with columns
-        elevation
-        azimuth
-        zenith
+    Returns
+    -------
+    A dataframe object indexed to times with the columns :
+        solar_altitude
+        solar_azimuth
+        solar_zenith
     """
 
     df = pd.DataFrame(index=times)

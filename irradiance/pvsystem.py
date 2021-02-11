@@ -1,27 +1,37 @@
+"""
+The main classes to create and transform the irradiance components
+falling into a photovoltaic system, represented by a location and a 
+surface.
+"""
+# Created by Sergio Badillo. 2020
+
 import pandas as pd
 import numpy as np
 import time
 import requests
 
-from spa_sb import solar_position_vectorized
+from spa_sb import solar_position_vect
 from requests.exceptions import HTTPError
 
 
 class PVSystem:
     """The class represents a pv system array and its general attributes.
 
-    Args :
-    - latitude, longitude : decimal coordinates of system's location
-    - elevation : distance aboves sea level
-
-    - surface_azimuth
-    - surface_tilt
-
-    A surface facing south has an array azimuth of 180 deg.
-    Surface tilt is defined as the angle from horizontal.
-    Azimuth angle convention is defined as degrees east of north (e.g. North = 0, East = 90, West = 270).
-    Array azimuth is defined as the horizontal normal vector from the array surface.
-
+    Parameters
+    ----------
+    name : string
+        Name or ID to identify the system
+    latitude, longitude : float
+        Decimal coordinates of system's location.
+    elevation : float
+        Distance aboves sea level, defaults to 0.
+    surface_azimuth : float
+        Orientation of the surface in respect to north.
+        Azimuth angle convention is defined as degrees east of north
+        (e.g. North = 0, East = 90, West = 270).
+        A surface facing south has an array azimuth of 180 deg.
+    surface_tilt : float
+        Surface tilt is defined as the angle from horizontal.
     """
 
     def __init__(
@@ -56,15 +66,20 @@ class PVSystem:
 
 
 class Irradiance:
-    """The irradiance Class represents the irradiance profiles and some
-    of their conversion methods in order to obtain the POA Irradiance"""
+    """Represents the irradiance profiles and includes the conversion
+    methods in order to obtain the Plane-of-Array (POA) Irradiance.
+    Irradiance reauires a PVSystem objects to be passed, along with a
+    times DateTimeIndex (assumed UTC) object to specify the simulation period.
+    """
 
     def __init__(
         self,
         pvsystem,
         times,
     ):
+
         # check if times arrays is datetimeindex
+
         if not isinstance(times, pd.DatetimeIndex):
             print("warning times is not datetime, ")
             try:
@@ -77,6 +92,7 @@ class Irradiance:
                 )
 
         # if localized, convert to UTC. otherwise, assume UTC.
+
         try:
             print(times[0])
             times = times.tz_convert("UTC")
@@ -85,6 +101,7 @@ class Irradiance:
             times = times
 
         # if index (times) is not closed to left then drop last value.
+
         if len(times) == 8761:
             times = times[:8760]
 
@@ -102,33 +119,28 @@ class Irradiance:
 
     def read_TMY_file():
         """ "read the standard components GHI, DNI, DHI."""
+        # work in progress
 
     def get_TMY_file(self):
-        """uses pvgis webservice to create a Typical Meteorological Year file
-        for the location.
+        """Uses PVGIS webservice to create a Typical Meteorological Year (TMY)
+         file using the PVSystem coordinates.
 
+        more about TMY files
+        https://ec.europa.eu/jrc/en/PVGIS/tools/tmy
 
-        Returns :
-        - Dataframe instance consisting of 1 year (or several years) of hourly
+        Return
+        ------
+        A dataframe instance consisting of 1 year (or several years) of hourly
         data,  with the following columns:
 
-            Date & time (UTC for normal CSV, local timezone time
-            T2m [°C] - Dry bulb (air) temperature.
-            RH [%] -  Relative Humidity.
-            G(h) [W/m2] - Global horizontal irradiance.
-            Gb(n) [W/m2] - Direct (beam) irradiance.
-            Gd(h) [W/m2] - Diffuse horizontal irradiance.
-            IR(h) [W/m2] - Infrared radiation downwards.
-            WS10m [m/s] - Windspeed.
-            WD10m [°] - Wind direction.
-            SP [Pa] - Surface (air) pressure.
-
-
-        read more about TMY files
-        https://ec.europa.eu/jrc/en/PVGIS/tools/tmy
+            "time_pvgis" : UTC for normal CSV, local timezone time
+            "GHI" : Global horizontal irradiance G(h) in [W/m2].
+            "DNI" : Direct (beam) irradiance Gb(n) in [W/m2].
+            "DHI" : Diffuse horizontal irradiance Gd(h) in [W/m2].
         """
 
         url = "https://re.jrc.ec.europa.eu/api/tmy"
+
         params = {
             "lat": self.lat,
             "lon": self.lon,
@@ -155,24 +167,24 @@ class Irradiance:
             print("get_TMY_file: done in {:.2f} seconds.".format(time.time() - start))
 
             tmy_json = r.json()
-
             df_r = pd.DataFrame.from_dict(data=tmy_json["outputs"]["tmy_hourly"])
-
             df_tmy = df_r[["time(UTC)", "G(h)", "Gb(n)", "Gd(h)"]].copy()
             df_tmy.set_index(self.times, inplace=True)
-
             df_tmy.columns = ["time_pvgis", "GHI", "DNI", "DHI"]
-
-            # df_tmy.drop(columns=["IR(h)", "WS10m", "WD10m", "SP"], axis=1, inplace=True)
             self.tmy = df_tmy
 
             return df_tmy
 
     def get_solar_pos_v(self):
         """
-        Calculates the position of the sun relative to an observer on the
-        surface of the Earth.
-        The convention used to describe solar positions includes the parameters :
+        Calculate the position of the sun relative to an observer on
+         the surface of the Earth.
+         spa_sb.solar_position_vect() is an implementation of the
+         Astronomical Applications Department of the US Naval Observatory method.
+
+        Returns
+        -------
+        Time-indexed dataframe consisting of columns :
         - Zenith Angle : measured from observer's zenith (observers plane normal).
         - Azimuth Angle : measured in relation to North.
         - Solar Elevation Angle : measured up from the horizon (90deg - Zenith Angle).
@@ -181,22 +193,23 @@ class Irradiance:
 
         start = time.time()
         print("calculating sun positions")
-        self.solar_pos = solar_position_vectorized(self.times, self.lat, self.lon)
-
+        self.solar_pos = solar_position_vect(self.times, self.lat, self.lon)
         print("get_solar_pos_v : done in", time.time() - start)
+
         return self.solar_pos
 
     def get_aoi(self):
-        """Calculates the angle of incidence between
+        """Calculates the Angle of Incidence (AOI) between
         the Sun's rays and the surface of the PV Array.
 
-        Args :
-        sun_azimuth
-        sun_zenith
-
-        Return :
+        Returns
+        -------
+        Time-indexed dataframe consisting of columns :
+        - AOI : angle of incidence between the sun's rays and the PV Surface.
+                in degrees.
 
         """
+
         df_aoi = pd.DataFrame(index=self.solar_pos.index, columns=["aoi"])
 
         theta_A = np.radians(self.solar_pos["solar_azimuth"])  # azimuth
@@ -215,7 +228,18 @@ class Irradiance:
         return df_aoi
 
     def get_poa_irradiance(self):
-        """Calculates plane-of-array irradiance"""
+        """Calculates plane-of-array irradiance and its components.
+
+        Return
+        ------
+        Time-indexed dataframe consisting of columns :
+            "POA" : Total Plane of array irradiance.
+            "E_b_poa" : Beam component of poa irradiance.
+            "E_g_poa" : Ground reflected component of poa irradiance.
+            "E_d_poa" : Diffue component of poa irradiance.
+
+
+        """
 
         df_poa = pd.DataFrame(
             index=self.times, columns=["POA", "E_b_poa", "E_g_poa", "E_d_poa"]
@@ -251,11 +275,10 @@ class Irradiance:
 
         df_poa["E_d_poa"] = E_d_iso + E_d_correction
 
-        # POA Irradiance total
+        # Total POA Irradiance
 
+        # remove negative values
         df_poa = df_poa.where(df_poa > 0, other=0)
-
-        # df_poa[df_poa < 0] = 0  # cut negative values juste in case
         df_poa["POA"] = df_poa["E_b_poa"] + df_poa["E_g_poa"] + df_poa["E_d_poa"]
 
         return df_poa
