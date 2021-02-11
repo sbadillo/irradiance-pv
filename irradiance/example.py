@@ -1,5 +1,5 @@
-from pvsystem import PVSystem
-from pvsystem import Irradiance
+from irradiance import PVSystem
+from irradiance import Irradiance
 import pandas as pd
 import time
 import matplotlib.pyplot as plt
