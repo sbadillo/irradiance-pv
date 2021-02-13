@@ -1,6 +1,16 @@
-# TODO: Fill out this file with information about your package
+from setuptools import setup
 
-# HINT: Go back to the object-oriented programming lesson "Putting Code on PyPi" and "Exercise: Upload to PyPi"
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
 
-# HINT: Here is an example of a setup.py file
-# https://packaging.python.org/tutorials/packaging-projects/
+setup(
+    name="irradiance_pv",
+    version=1.1,
+    description="Calculate in plane irradiance for a surface",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    packages=["irradiance_pv"],
+    author="Sergio Badillo",
+    author_email="sbadilloworks@gmail.com",
+    zip_safe=False,
+)

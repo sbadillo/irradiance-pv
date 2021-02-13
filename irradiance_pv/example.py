@@ -1,9 +1,22 @@
-from irradiance import PVSystem
-from irradiance import Irradiance
+"""
+GHI to POA Transposition
+=========================
+Example of generating POA irradiance given a location and a time frame.
+"""
+
+
+# This example shows how to use the
+# `irradiance.get_poa_irradiance()` function to transpose
+# GHI data to Plane of Array (POA) irradiance.
+
 import pandas as pd
 import time
 import matplotlib.pyplot as plt
 
+from irradiance_pv import PVSystem
+from irradiance_pv import Irradiance
+
+# Set-up a time-naive date range using pandas
 naive_times = pd.date_range(start="2015", end="2016", freq="1h", closed="left")
 
 print(naive_times)
@@ -50,7 +63,6 @@ winter_irradiance = df["2015-12-24"]
 summer_irradiance.index = summer_irradiance.index.strftime("%H:%M")
 winter_irradiance.index = winter_irradiance.index.strftime("%H:%M")
 
-
 # Plot GHI vs. POA for winter and summer
 fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
 summer_irradiance["GHI"].plot(ax=ax1, label="GHI")
@@ -63,3 +75,4 @@ ax1.set_ylabel("Irradiance ($W/m^2$)")
 ax1.legend()
 ax2.legend()
 plt.show()
+# %%
