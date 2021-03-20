@@ -2,17 +2,17 @@
 
 import pytest
 
-from .spa_delft import julian_date
-from .spa_delft import d_time_bis
-from .spa_delft import d_time
-from .spa_delft import sun_mean_anomaly
-from .spa_delft import sun_mean_lon
-from .spa_delft import sun_ecliptic_lon
-from .spa_delft import lmst
-from .spa_delft import sun_altitude
-from .spa_delft import sun_zenith
+from irradiance_pv.spa_sb import julian_date
+from irradiance_pv.spa_sb import d_time_bis
+from irradiance_pv.spa_sb import d_time
+from irradiance_pv.spa_sb import sun_mean_anomaly
+from irradiance_pv.spa_sb import sun_mean_lon
+from irradiance_pv.spa_sb import sun_ecliptic_lon
+from irradiance_pv.spa_sb import lmst
+from irradiance_pv.spa_sb import sun_altitude
+from irradiance_pv.spa_sb import sun_zenith
 
-from .spa_delft import solar_position
+from irradiance_pv.spa_sb import solar_position
 
 
 import pandas as pd
