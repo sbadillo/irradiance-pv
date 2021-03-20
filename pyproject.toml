@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "irradiance_pv"
-version = "1.26"
+version = "1.27"
 description = "\"Calculate in plane irradiance for a surface\""
 readme = "README.md"
 homepage = "https://github.com/sbadillo/irradiance-pv"
@@ -8,9 +8,7 @@ authors = ["-sergiob <sbadilloworks@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.8"
-pandas = "^1.2.3"
-numpy = "^1.20.1"
+
 
 [tool.poetry.dev-dependencies]
 
