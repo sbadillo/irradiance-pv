@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: irradiance-pv
-Version: 1.22
+Version: 1.23
 Summary: Calculate in plane irradiance for a surface
 Home-page: UNKNOWN
 Author: Sergio Badillo
@@ -15,9 +15,11 @@ Description: # Irradiance PV
         
         
         ## Installation
-        '''console
-        $pip install irradiance-pv
-        '''
+        
+        
+        ```console
+        $ pip install irradiance-pv
+        ```
         
         ## files
         
