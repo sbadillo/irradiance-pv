@@ -11,6 +11,10 @@ Plane-of-Array (POA) Irradiance, necessary for the modeling of photovoltaic ener
 $pip install irradiance-pv
 '''
 
+```console
+$ pip install irradiance-pv
+```
+
 ## files
 
 ### irradiance.py
