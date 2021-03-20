@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: irradiance-pv
-Version: 1.2
+Version: 1.22
 Summary: Calculate in plane irradiance for a surface
 Home-page: UNKNOWN
 Author: Sergio Badillo
@@ -10,7 +10,14 @@ Description: # Irradiance PV
         
         Irradiance is a simple implementation of solar position and irradiance models to calculate the incident in plane irradiance in PV Modules.
         
-        The package works its way from an horizontal global irradince, calculating solar positions, then transforming the components into a Plane-of-Array (POA) Irradiance, necessary for the modeling of photovoltaic energy yields.
+        The package works its way from an horizontal global irradince, calculating solar positions, then transforming the components into a 
+        Plane-of-Array (POA) Irradiance, necessary for the modeling of photovoltaic energy yields.
+        
+        
+        ## Installation
+        '''console
+        $pip install irradiance-pv
+        '''
         
         ## files
         

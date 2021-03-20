@@ -2,7 +2,14 @@
 
 Irradiance is a simple implementation of solar position and irradiance models to calculate the incident in plane irradiance in PV Modules.
 
-The package works its way from an horizontal global irradince, calculating solar positions, then transforming the components into a Plane-of-Array (POA) Irradiance, necessary for the modeling of photovoltaic energy yields.
+The package works its way from an horizontal global irradince, calculating solar positions, then transforming the components into a 
+Plane-of-Array (POA) Irradiance, necessary for the modeling of photovoltaic energy yields.
+
+
+## Installation
+'''console
+$pip install irradiance-pv
+'''
 
 ## files
 
