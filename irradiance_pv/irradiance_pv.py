@@ -1,3 +1,5 @@
+# irradiance pv module
+
 """
 The main classes to create and transform the irradiance components
 falling into a photovoltaic system, represented by a location and a 
@@ -9,8 +11,12 @@ import pandas as pd
 import numpy as np
 import time
 import requests
+import sys
 
-from spa_sb import solar_position_vect
+sys.path.append(".")
+
+
+from .spa_sb import solar_position_vect
 from requests.exceptions import HTTPError
 
 
@@ -117,7 +123,7 @@ class Irradiance:
         self.aoi = None
         self.tmy = None
 
-    def read_TMY_file():
+    def read_TMY_file(file):
         """ "read the standard components GHI, DNI, DHI."""
         # work in progress
 

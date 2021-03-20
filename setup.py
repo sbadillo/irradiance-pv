@@ -9,7 +9,7 @@ with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="irradiance_pv",
-    version=1.24,
+    version=1.25,
     description="Calculate in plane irradiance for a surface",
     long_description=long_description,
     long_description_content_type="text/markdown",

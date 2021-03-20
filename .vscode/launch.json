@@ -8,7 +8,7 @@
       "name": "Python: example.py",
       "type": "python",
       "request": "launch",
-      "program": "c:/Users/sbadi/Projects/Learning/dsnd/5_Portfolio_Excercise/irradiance/irradiance/example.py",
+      "program": "c:/Users/sbadi/Projects/Learning/dsnd/5_Portfolio_Excercise/irradiance/irradiance_pv/example.py",
       "console": "integratedTerminal"
     },
     {
